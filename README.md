@@ -1,9 +1,24 @@
+
 nikto
 =====
+[![alt text](https://cirt.net/images/patreon.png "Become a patron of Nikto!")](https://www.patreon.com/sullo)
+
 
 Nikto web server scanner  - https://cirt.net/Nikto2
 
 Full documentation - https://cirt.net/nikto2-docs/
+
+Run normally:
+
+~~~
+git clone https://github.com/sullo/nikto
+# Main script is in program/
+cd nikto/program
+# Run using the shebang interpreter
+./nikto.pl -h http://www.example.com
+# Run using perl (if you forget to chmod)
+perl nikto.pl -h http://www.example.com
+~~~
 
 Run as a Docker container:
 
@@ -112,3 +127,21 @@ Basic usage:
        -vhost+            Virtual host (for Host header)
               + requires a value
 ```
+
+License
+=======
+Copyright (C) 2001 Chris Sullo
+
+This program is free software; you can redistribute it and/or
+modify it under the terms of the GNU General Public License
+as published by the Free Software Foundation; version 2
+of the License only.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to
+Free Software Foundation, 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.

@@ -49,6 +49,11 @@ sub change_variables {
         }
     }
 
+#            if ($line =~ /CGIDIRS/) {
+#                print "changed CGI Dirs\n";
+#                for ($i=0;$i<=$#subtests;$i++) { print "\t$i\t$subtests[$i]\n"; }
+#		 exit;
+# 		}
     return @subtests;
 }
 
@@ -103,6 +108,41 @@ sub is_404 {
 }
 
 ###############################################################################
+sub scrub {
+	my (@s, $line);
+	($line, $s[0], $s[1], $s[2], $s[3], $s[4]) = @_;
+
+	foreach my $i (@_) {
+		next if $i eq "";
+		if (is_ip($i)) { 
+			$line =~ s/$i/0\.\0\.\0\.0/g;
+		}
+		else {
+			$line =~ s/$i/example.com/ig;
+		}
+	}
+
+        # name
+# print "hostname: " . $mark->{'hostname'} ."\n";
+        $line =~ s/$mark->{'hostname'}/example.com/ig unless $mark->{'hostname'} eq '';
+
+        # ip
+        $line =~ s/$mark->{'ip'}/0.0.0.0/ig unless $mark->{'ip'} eq '';
+#print "ip: " . $mark->{'ip'} ."\n";
+
+        # vhost
+        $line =~ s/$CLI{'vhost'}/example.com/ig unless $CLI{'vhost'} eq '';
+#print "vhost: " . $mark->{'vhost'} ."\n";
+
+        # and in case we got here from set_target
+        $line =~ s/$mark->{'ident'}/example.com/ig unless $mark->{'ident'} eq '';
+#print "ident: " . $mark->{'ident'} ."\n";
+	
+#print "line2: $line\n";
+	return $line;
+
+}
+###############################################################################
 sub nprint {
     my $line   = shift;
     my $mode   = shift;
@@ -111,18 +151,19 @@ sub nprint {
 
     # scrub values
     if ($OUTPUT{'scrub'}) {
+	$line = scrub($line, $mark->{'hostname'}, $mark->{'ip'}, $CLI{'vhost'}, $mark->{'ident'});
 
         # name
-        $line =~ s/$mark->{'hostname'}/example.com/ig unless $mark->{'hostname'} eq '';
+        #$line =~ s/$mark->{'hostname'}/example.com/ig unless $mark->{'hostname'} eq '';
 
         # ip
-        $line =~ s/$mark->{'ip'}/0.0.0.0/ig unless $mark->{'ip'} eq '';
+        #$line =~ s/$mark->{'ip'}/0.0.0.0/ig unless $mark->{'ip'} eq '';
 
         # vhost
-        $line =~ s/$CLI{'vhost'}/example.com/ig unless $CLI{'vhost'} eq '';
+        #$line =~ s/$CLI{'vhost'}/example.com/ig unless $CLI{'vhost'} eq '';
 
         # and in case we got here from set_target
-        $line =~ s/$mark->{'ident'}/example.com/ig unless $mark->{'ident'} eq '';
+        #$line =~ s/$mark->{'ident'}/example.com/ig unless $mark->{'ident'} eq '';
     }
 
     # don't print debug & verbose to output file...
@@ -815,9 +856,6 @@ sub general_config {
 
     if (defined $CLI{'evasion'}) {
         $CLI{'evasion'} =~ s/[^1-8AB]//g;
-    }
-    else {
-        undef $NIKTO{'anti_ids'};    # we don't need this any more
     }
 
     if (!defined $CLI{'plugins'} || $CLI{'plugins'} eq "") {
@@ -2303,8 +2341,12 @@ sub dump_var {
     my $display = LW2::dump('', \%hash_in);
     $display =~ s/^\$/'$msg'/;
     if ($OUTPUT{'scrub'}) {
-        $display =~ s/'host' => '.*',/'host' => 'example.com',/g;
-        $display =~ s/'Host' => '.*'/'host' => 'example.com'/g;
+	$new = "";
+	foreach my $line (split(/\n/, $display)) { 
+        	$line = scrub($line);
+		$new .= "$line\n";
+	}
+	$display = $new;
     }
     nprint($display, "d");
     return;
@@ -2851,7 +2893,6 @@ sub send_updates {
 sub usage {
     my $is_failure = shift;
 
-    if ($_[0] eq "Help") {
         print "
    Options:
        -ask+               Whether to ask about submitting updates
@@ -2877,7 +2918,7 @@ sub usage {
             print "                               $k     $NIKTO{'anti_ids'}{$k}\n";
         }
 
-        print "        -Format+           Save file (-o) format:
+        print "       -Format+           Save file (-o) format:
                                csv   Comma-separated-value
                                json  JSON Format
                                htm   HTML Format
@@ -2886,7 +2927,7 @@ sub usage {
                                txt   Plain text
                                xml   XML Format
                                (if not specified the format will be taken from the file extension passed to -output)
-       -Help              Extended help information
+       -Help              This help information
        -host+             Target host/URL
        -404code           Ignore these HTTP codes as negative responses (always). Format is \"302,301\".
        -404string         Ignore this string in response body content as negative response (always). Can be a regular expression.
@@ -2907,7 +2948,7 @@ sub usage {
        -no404             Disables nikto attempting to guess a 404 page
        -Option            Over-ride an option in nikto.conf, can be issued multiple times
        -output+           Write output to this file ('.' for auto-name)
-       -Pause+            Pause between tests (seconds, integer or float)
+       -Pause+            Pause between tests (seconds)
        -Plugins+          List of plugins to run (default: ALL)
        -port+             Port to use (default 80)
        -RSAcert+          Client certificate file
@@ -2943,33 +2984,6 @@ sub usage {
        -Version           Print plugin and database versions
        -vhost+            Virtual host (for Host header)
    		+ requires a value\n\n";
-    }
-    else {
-        print "
-       -config+            Use this config file
-       -Display+           Turn on/off display outputs
-       -dbcheck            check database and other key files for syntax errors
-       -Format+            save file (-o) format
-       -Help               Extended help information
-       -host+              target host/URL
-       -id+                Host authentication to use, format is id:pass or id:pass:realm
-       -list-plugins       List all available plugins
-       -output+            Write output to this file
-       -nossl              Disables using SSL
-       -no404              Disables 404 checks
-       -Plugins+           List of plugins to run (default: ALL)
-       -port+              Port to use (default 80)
-       -root+              Prepend root value to all requests, format is /directory
-       -ssl                Force ssl mode on port
-       -Tuning+            Scan tuning
-       -timeout+           Timeout for requests (default 10 seconds)
-       -update             Update databases and plugins from CIRT.net
-       -Version            Print plugin and database versions
-       -vhost+             Virtual host (for Host header)
-   		+ requires a value
-
-	Note: This is the short help output. Use -H for full help text.\n\n";
-    }
 
     check_modules();
 
