@@ -200,21 +200,6 @@ sub nikto_headers_postfetch {
        $HEADERS_STS{ $mark->{hostname} }{ $mark->{port} } = 1;
     }
 
-    # Look for Expect-CT
-    if($mark->{'ssl'} && !$EXPECTCT{ $mark->{hostname} }{$mark->{port} } && defined $result->{'whisker'}->{'code'}) {
-        if(defined $result->{'expect-ct'}) {
-            unless($result->{'expect-ct'} =~ /enforce/i) {
-                add_vulnerability( $mark, "Expect-CT is not enforced, upon receiving an invalid Certificate Transparency Log, the connection will not be dropped.",
-                    999954, 0, $request->{'whisker'}->{'method'}, $request->{'whisker'}->{'uri'}, $request, $result);
-            }
-        }
-        else {
-            add_vulnerability($mark, "The site uses SSL and Expect-CT header is not present.",
-                999955, 0, $request->{'whisker'}->{'method'}, $request->{'whisker'}->{'uri'}, $request, $result);
-        }
-        $EXPECTCT{ $mark->{hostname} }{ $mark->{port} } = 1;
-    }
-    
     if (!$HEADERS_XCTO{ $mark->{hostname} }{ $mark->{port} } && defined $result->{'whisker'}->{'code'}) {
         if (!defined $result->{'x-content-type-options'}) {
             add_vulnerability( $mark,
@@ -306,7 +291,7 @@ sub nikto_headers {
     $locheaders{'User-Agent'} =~ s/\@TESTID/headers:\ IIS\ internal\ IP/;
     $locflags{'noclean'} = 1;
     $locflags{'nohost'}  = 1;
-    $cl = $l = $wa = 0;
+    $cl = $l = $wa = $rt = 0;
 
     foreach my $uri ('/',                              '/images',
                      '/Autodiscover/Autodiscover.xml', '/Autodiscover/',
@@ -353,7 +338,25 @@ sub nikto_headers {
                         999986, 630, "GET", $uri, $request, $result);
                         }
                 }
-        if ($cl && $l && $wa) { last; }
+
+        if (!$rt && ($result->{'report-to'} ne "")) {
+        	my @bits = split("url\": \"", $result->{'report-to'});
+		    my $have = 0;
+            my @urls;
+        	foreach my $b (@bits) {
+                	next if $b !~ /^http/;
+                	$b =~ s/\".*$//;
+        			if ($b ne "") {
+                        push(@urls, $b);
+			        	$have = $rt = 1;
+				        }
+        		    }
+		if ($have) {
+			add_vulnerability( $mark, "A report-to header was found with the following URLs: " . join(", ", @urls), 999945, 630, "GET", $uri, $request, $result);
+			}
+		}
+
+        if ($cl && $l && $wa && $rt) { last; }
         }
 
     #######################################################################
