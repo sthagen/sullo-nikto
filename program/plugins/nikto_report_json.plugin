@@ -32,7 +32,7 @@ sub nikto_report_json_init {
                report_format     => 'json',
                copyright         => "2016 Chris Sullo"
                };
-    use JSON;
+    use JSON::PP;
     return $id;
 }
 
